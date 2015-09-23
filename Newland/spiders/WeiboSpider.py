@@ -25,8 +25,9 @@ class WeiboSpider(scrapy.Spider):
         try:
             #login()
             #self.login_cookie = read_cookie()
-            self.login_cookie={'gsid_CTandWM':'4ukBf0c41Qf10dqbMa4tinNJZf1','SUHB':'0WGsnX0DCd1ary','SUB':'_2A257BGxEDeTxGeNI7FAW9S_FyD2IHXVYB3QMrDV6PUJbrdAKLVnXkW1rfd8i3eEd8reMOriQ_YOxQWFoGw..','_T_WM':'d3a36aad1f5c53eaa5debf09fe307523'}
+            self.login_cookie={'gsid_CTandWM':'4uHdf0c416yTvMHggBJiFg0hKcR','SUB':'V6PUJbrdAKLW_ekW0xK-CJ29XIiRsXp41DWZJPATYGrQ..','_T_WM':'d3a36aad1f5c53eaa5debf09fe307523','_WEIBO_UID':'3814348797','SUHB':'0WGsnX0DCd1ary'}
             #yield Request(url='http://weibo.cn/5672751931/follow?vt=1',cookies=self.login_cookie,callback=self.get_user)
+            #yield Request(url='http://weibo.cn/pub/topmblog?page=2',callback=self.parse_hot,cookies=self.login_cookie)
 
             for i in range(1,25):
                 hot_url = "http://weibo.cn/pub/topmblog?page="+str(i)
