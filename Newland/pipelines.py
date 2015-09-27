@@ -1,4 +1,5 @@
 import pymongo
+import time
 import random
 
 class WeiboPipeline(object):
@@ -15,8 +16,10 @@ class WeiboPipeline(object):
 
 
     def process_item(self,item,spider):
-        self.db.items.save({'user':item['user'],'index':item['index'],'text':item['text'],'time':item['time']})
-
+        id=self.db.item.count()
+        id+=1
+        self.db.item.save\
+            ({'_id':id,'user':item['user'],'index':item['index'],'text':item['text'],'time':item['time'],'now':''.join(time.asctime(time.localtime()))})
         print'done.'
         return item
 

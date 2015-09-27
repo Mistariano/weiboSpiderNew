@@ -6,34 +6,46 @@ from scrapy import log
 from Newland.items import WeiboItem
 from weibo_login import Fetcher
 import os
+import sys
+import redis
 import cookielib
+# #
+# # supporting Chinese
+# reload(sys)
+# sys.setdefaultencoding( "utf-8" )
+# #
 '''
     This is a crawler for weibo.cn
     ^w^
 '''
-__version__='v1.0.1'
+__version__='v1.0.6'
 
 
 
 
 
 class WeiboSpider(scrapy.Spider):
+
     name="weibo"
     allowed_domains = ["weibo.cn"]
     check=['start','ok']
+    def __init__(self):
+        print 'here>'
+        self.conn_r=redis.Redis(host='localhost', port=6379, db='1')
+        print'here<'
     def start_requests(self):
         log.msg("start" , level=log.INFO)
         try:
             try:
-                self.fetcher=Fetcher(username='542058243@qq.com',pwd='hdlhdl',cookie_filename='weibo_cookies.dat')
+                self.fetcher=Fetcher(username='mist_weibo_1@163.com',pwd='hdlhdl',cookie_filename='weibo_cookies.dat')
                 self.fetcher.login()
                 self.login_cookie = read_cookie()
                 print self.login_cookie
             except:
                 print 'oh'
             #self.login_cookie={'gsid_CTandWM':'4uDJf0c41dlVGwYhbnfeHnNJZf1'}
-            #yield Request(url='http://weibo.cn/tfyiyangqianxi',cookies=self.login_cookie,callback=self.parse_user,meta={'nick':'test'})
-            yield Request(url='http://weibo.cn/pub/topmblog?page=2',callback=self.parse_hot,cookies=self.login_cookie)
+            yield Request(url='http://weibo.cn/tfyiyangqianxi',cookies=self.login_cookie,callback=self.parse_user,meta={'nick':'test'})
+            #yield Request(url='http://weibo.cn/pub/topmblog?page=2',callback=self.parse_hot,cookies=self.login_cookie)
             #yield Request(url='http://weibo.cn/1768346942/follow',callback=self.get_user,cookies=self.login_cookie)
 
             '''
@@ -79,15 +91,23 @@ class WeiboSpider(scrapy.Spider):
         log.msg("parse_user:"+response.url , level=log.INFO)
         try:
             sel=Selector(text=response.body)
-            indexes=sel.xpath('//div[@class="c"]/@id').re('M_(.*)')
-            for i in indexes:
-                yield Request(url='http://weibo.cn/comment/'+i,cookies=self.login_cookie,callback=self.parse_comnt,meta={'nick':response.meta['nick'],'index':i})
             url=sel.xpath('//div[@class="tip2"]').re('<a href="(.*?)follow">.*?</a>')[0]
-
             #print urls
             #os.system("pause")
             yield Request(url='http://weibo.cn'+url+'follow',cookies=self.login_cookie,callback=self.get_user)
             yield Request(url='http://weibo.cn'+url+'fans',cookies=self.login_cookie,callback=self.get_user)
+            indexes=sel.xpath('//div[@class="c"]/@id').re('M_(.*)')
+            for i in indexes:
+                print i
+                yield Request(url='http://weibo.cn/comment/'+i,cookies=self.login_cookie,callback=self.parse_comnt,meta={'nick':response.meta['nick'],'index':i})
+            # url=sel.xpath('//div[@class="tip2"]').re('<a href="(.*?)follow">.*?</a>')[0]
+            # #print urls
+            # #os.system("pause")
+            # yield Request(url='http://weibo.cn'+url+'follow',cookies=self.login_cookie,callback=self.get_user)
+            # yield Request(url='http://weibo.cn'+url+'fans',cookies=self.login_cookie,callback=self.get_user)
+            """
+                magic,"yield" may created a stack(FILO),so parse_comnt first in order to avoid mistake
+            """
 
 
 
@@ -131,13 +151,20 @@ class WeiboSpider(scrapy.Spider):
             log.msg(str(e), level=log.ERROR)
 
     def handle_url(self,url):
-        if url in self.check:
-            print url,'is in check'
+        # if url in self.check:
+        #     print url,'is in check'
+        #     return 0
+        #
+        # self.check.append(url)
+        # print url,'has been insert to check'
+        # print 'elements:',len(self.check)
+        # return 1
+        if self.conn_r.get(url):
+            print url,'is in list'
             return 0
-
-        self.check.append(url)
-        print url,'has been insert to check'
-        print 'elements:',len(self.check)
+        self.conn_r.set(url,1)
+        print url,'has been insert to list'
+        print 'urls:',self.conn_r.dbsize()
         return 1
 
 
