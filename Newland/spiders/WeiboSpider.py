@@ -4,7 +4,8 @@ from scrapy.selector import Selector
 from scrapy.http import Request,FormRequest
 from scrapy import log
 from Newland.items import WeiboItem
-#import weibo_login
+from weibo_login import Fetcher
+import os
 import cookielib
 '''
     This is a crawler for weibo.cn
@@ -23,12 +24,19 @@ class WeiboSpider(scrapy.Spider):
     def start_requests(self):
         log.msg("start" , level=log.INFO)
         try:
-            #login()
-            #self.login_cookie = read_cookie()
-            self.login_cookie={'gsid_CTandWM':'4uHdf0c416yTvMHggBJiFg0hKcR','SUB':'V6PUJbrdAKLW_ekW0xK-CJ29XIiRsXp41DWZJPATYGrQ..','_T_WM':'d3a36aad1f5c53eaa5debf09fe307523','_WEIBO_UID':'3814348797','SUHB':'0WGsnX0DCd1ary'}
-            #yield Request(url='http://weibo.cn/5672751931/follow?vt=1',cookies=self.login_cookie,callback=self.get_user)
-            #yield Request(url='http://weibo.cn/pub/topmblog?page=2',callback=self.parse_hot,cookies=self.login_cookie)
+            try:
+                self.fetcher=Fetcher(username='542058243@qq.com',pwd='hdlhdl',cookie_filename='weibo_cookies.dat')
+                self.fetcher.login()
+                self.login_cookie = read_cookie()
+                print self.login_cookie
+            except:
+                print 'oh'
+            #self.login_cookie={'gsid_CTandWM':'4uDJf0c41dlVGwYhbnfeHnNJZf1'}
+            #yield Request(url='http://weibo.cn/tfyiyangqianxi',cookies=self.login_cookie,callback=self.parse_user,meta={'nick':'test'})
+            yield Request(url='http://weibo.cn/pub/topmblog?page=2',callback=self.parse_hot,cookies=self.login_cookie)
+            #yield Request(url='http://weibo.cn/1768346942/follow',callback=self.get_user,cookies=self.login_cookie)
 
+            '''
             for i in range(1,25):
                 hot_url = "http://weibo.cn/pub/topmblog?page="+str(i)
                 yield Request(url=hot_url,callback=self.parse_hot,cookies=self.login_cookie,meta=
@@ -36,7 +44,7 @@ class WeiboSpider(scrapy.Spider):
                     #'dont_redirect': True,
                     #'handle_httpstatus_list': [302]
                 })
-
+            '''
         except Exception, e:
             log.msg("Fail to start" , level=log.ERROR)
             log.msg(str(e), level=log.ERROR)
@@ -58,7 +66,8 @@ class WeiboSpider(scrapy.Spider):
                 #'''
                     yield Request(url=url,cookies=self.login_cookie,callback=self.parse_user,meta=
                     {
-                        'nick':nick,
+                        'nick':nick
+
                         #'dont_redirect': True,
                         #'handle_httpstatus_list': [302]
                     })
@@ -70,11 +79,17 @@ class WeiboSpider(scrapy.Spider):
         log.msg("parse_user:"+response.url , level=log.INFO)
         try:
             sel=Selector(text=response.body)
-            urlids=sel.xpath('//div[@class="c"]/@id').re('M_(.*)')
-            for urlid in urlids:
-                yield Request(url='http://weibo.cn/comment/'+urlid,cookies=self.login_cookie,callback=self.parse_comnt,meta={'nick':response.meta['nick'],'id':urlid})
-            yield Request(url=response.url+'/follow',cookies=self.login_cookie,callback=self.get_user)
-            yield Request(url=response.url+'/fans',cookies=self.login_cookie,callback=self.get_user)
+            indexes=sel.xpath('//div[@class="c"]/@id').re('M_(.*)')
+            for i in indexes:
+                yield Request(url='http://weibo.cn/comment/'+i,cookies=self.login_cookie,callback=self.parse_comnt,meta={'nick':response.meta['nick'],'index':i})
+            url=sel.xpath('//div[@class="tip2"]').re('<a href="(.*?)follow">.*?</a>')[0]
+
+            #print urls
+            #os.system("pause")
+            yield Request(url='http://weibo.cn'+url+'follow',cookies=self.login_cookie,callback=self.get_user)
+            yield Request(url='http://weibo.cn'+url+'fans',cookies=self.login_cookie,callback=self.get_user)
+
+
 
         except Exception, e:
             log.msg("Fail to parse_user" , level=log.ERROR)
@@ -86,20 +101,26 @@ class WeiboSpider(scrapy.Spider):
             sel=Selector(text=response.body)
             text=sel.xpath('//div[@id="M_"]//span[@class="ctt"]/text()').extract()
             time=sel.xpath('//div[@id="M_"]//span[@class="ct"]/text()').extract()
-            item=WeiboItem(text=text,time=time,user=response.meta['nick'])
+            item=WeiboItem(index=response.meta['index'],text=text,time=time,user=response.meta['nick'])
             yield item
         except Exception, e:
             log.msg("Fail to parse_comnt" , level=log.ERROR)
             log.msg(str(e), level=log.ERROR)
+
     def get_user(self,response):
         log.msg("get_user:"+response.url , level=log.INFO)
         try:
 
             users=Selector(text=response.body).xpath('//tr/td[@valign="top"][2]').extract()
+            #print users
+            #os.system("pause")
             for user in users:
                 sel=Selector(text=user)
                 url=sel.xpath('//a/@href').extract()[0]
                 nick=sel.xpath('//a/text()').extract()[0]
+                #print url
+                #os.system("pause")
+
                 #print 'here?'
                 if(self.handle_url(url)):
                     yield Request(url=url,cookies=self.login_cookie,callback=self.parse_user,meta={'nick':nick})
@@ -119,11 +140,11 @@ class WeiboSpider(scrapy.Spider):
         print 'elements:',len(self.check)
         return 1
 
-'''
-functions of old versions
+
+
 def read_cookie():
     log.msg("reading cookie... " , level=log.INFO)
-    cookie_file = "weibo_login_cookies.dat"
+    cookie_file = "weibo_cookies.dat"
     cookie_jar = cookielib.LWPCookieJar(cookie_file)
     cookie_jar.load(ignore_discard=True, ignore_expires=True)
     cookie = dict()
@@ -131,7 +152,8 @@ def read_cookie():
         cookie[ck.name] = ck.value
     log.msg("done " , level=log.INFO)
     return cookie
-
+'''
+functions of old versions
 def login():
     log.msg("login... " , level=log.INFO)
     username = 'mist_weibo_1@163.com'
