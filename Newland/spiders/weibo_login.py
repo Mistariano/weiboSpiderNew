@@ -1,3 +1,4 @@
+# encoding: utf-8
 import sys
 import urllib2
 import urllib
@@ -78,8 +79,7 @@ class Fetcher(object):
             self.do_login()
 
 
-# f=Fetcher(username='542058243@qq.com',pwd='hdlhdl',cookie_filename='weibo_cookies.dat')
-# f.login()
+
 
 # cookie_file = "weibo_cookies.dat"
 # cookie_jar = cookielib.LWPCookieJar(cookie_file)

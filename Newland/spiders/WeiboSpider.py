@@ -1,3 +1,4 @@
+# encoding: utf-8
 __author__ = 'MisT'
 import scrapy
 from scrapy.selector import Selector
@@ -9,16 +10,12 @@ import os
 import sys
 import redis
 import cookielib
-# #
-# # supporting Chinese
-# reload(sys)
-# sys.setdefaultencoding( "utf-8" )
-# #
+
 '''
     This is a crawler for weibo.cn
     ^w^
 '''
-__version__='v1.0.6'
+__version__='v1.0.7'
 
 
 
@@ -27,17 +24,17 @@ __version__='v1.0.6'
 class WeiboSpider(scrapy.Spider):
 
     name="weibo"
-    allowed_domains = ["weibo.cn"]
+    #allowed_domains = ["weibo.cn"]
     check=['start','ok']
     def __init__(self):
         print 'here>'
-        self.conn_r=redis.Redis(host='localhost', port=6379, db='1')
+        self.conn_r=redis.Redis(host='localhost', port=6379, db='2')
         print'here<'
     def start_requests(self):
         log.msg("start" , level=log.INFO)
         try:
             try:
-                self.fetcher=Fetcher(username='mist_weibo_1@163.com',pwd='hdlhdl',cookie_filename='weibo_cookies.dat')
+                self.fetcher=Fetcher(username='542058243@qq.com',pwd='hdlhdl',cookie_filename='weibo_cookies.dat')
                 self.fetcher.login()
                 self.login_cookie = read_cookie()
                 print self.login_cookie
@@ -92,14 +89,18 @@ class WeiboSpider(scrapy.Spider):
         try:
             sel=Selector(text=response.body)
             url=sel.xpath('//div[@class="tip2"]').re('<a href="(.*?)follow">.*?</a>')[0]
-            #print urls
+            uid=url.split('/')[1]
+            print uid
             #os.system("pause")
             yield Request(url='http://weibo.cn'+url+'follow',cookies=self.login_cookie,callback=self.get_user)
             yield Request(url='http://weibo.cn'+url+'fans',cookies=self.login_cookie,callback=self.get_user)
             indexes=sel.xpath('//div[@class="c"]/@id').re('M_(.*)')
             for i in indexes:
                 print i
-                yield Request(url='http://weibo.cn/comment/'+i,cookies=self.login_cookie,callback=self.parse_comnt,meta={'nick':response.meta['nick'],'index':i})
+                # yield Request(url='http://weibo.com/'+uid+'/'+i,cookies=self.login_cookie,callback=self.parse_single,
+                #               meta={'nick':response.meta['nick'],'index':i,'uid':uid})
+                yield Request(url='http://weibo.cn/comment/'+i,cookies=self.login_cookie,callback=self.parse_comnt,
+                              meta={'nick':response.meta['nick'],'index':i,'uid':uid})
             # url=sel.xpath('//div[@class="tip2"]').re('<a href="(.*?)follow">.*?</a>')[0]
             # #print urls
             # #os.system("pause")
@@ -119,13 +120,34 @@ class WeiboSpider(scrapy.Spider):
         log.msg("parse_comnt:"+response.url , level=log.INFO)
         try:
             sel=Selector(text=response.body)
-            text=sel.xpath('//div[@id="M_"]//span[@class="ctt"]/text()').extract()
-            time=sel.xpath('//div[@id="M_"]//span[@class="ct"]/text()').extract()
-            item=WeiboItem(index=response.meta['index'],text=text,time=time,user=response.meta['nick'])
+            text=''.join(sel.xpath('//div[@id="M_"]//span[@class="ctt"]/text()').extract())
+            time=sel.xpath('//div[@id="M_"]//span[@class="ct"]/text()').extract()[0]
+            item=WeiboItem(index=response.meta['index'],text=text,time=time,user=response.meta['nick'],uid=response.meta['uid'])
             yield item
         except Exception, e:
             log.msg("Fail to parse_comnt" , level=log.ERROR)
             log.msg(str(e), level=log.ERROR)
+
+
+    # def parse_single(self, response):
+    #     log.msg("parse_page: " + response.url, level=log.INFO)
+    #     try:
+    #         content = response.body
+    #         sel = Selector(text=content)
+    #         html = sel.xpath('//script/text()').re(r'FM.view\({"ns":"pl.content.weiboDetail.index".*"html":"(.*)"')[0]
+    #         html = clean_html(html)
+    #         sel = Selector(text=html)
+    #         text = ''.join(sel.xpath('//div[@class="WB_text W_f14"]').re('>(.*?)<'))
+    #         text=text.replace(' ', '')
+    #         time=sel.xpath('//div[@class="WB_from S_txt2"]/a[1]/@title').extract()[0]
+    #         item = WeiboItem(index=response.meta['index'],text=text,time=time,user=response.meta['nick'],uid=response.meta['uid'])
+    #         #print time
+    #         #os.system("pause")
+    #         yield item
+    #     except Exception, e:
+    #         log.msg("Error for parse_weibo_page: " + response.url, level=log.ERROR)
+    #         log.msg(str(e), level=log.ERROR)
+
 
     def get_user(self,response):
         log.msg("get_user:"+response.url , level=log.INFO)
@@ -179,13 +201,10 @@ def read_cookie():
         cookie[ck.name] = ck.value
     log.msg("done " , level=log.INFO)
     return cookie
-'''
-functions of old versions
-def login():
-    log.msg("login... " , level=log.INFO)
-    username = 'mist_weibo_1@163.com'
-    pwd = 'hdlhdl'
-    cookie_file = 'weibo_login_cookies.dat'
-    fet=weibo_login.Fetcher(username=username,pwd=pwd)
-    return fet.login(cookie_filename=cookie_file)
-'''
+def clean_html(html):
+    html = html.replace('\\t', '')
+    html = html.replace('\\r', '')
+    html = html.replace('\\n', '')
+    html = html.replace('\\', '')
+    return html
+
