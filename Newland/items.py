@@ -3,7 +3,7 @@ import scrapy
 
 
 class WeiboItem(scrapy.Item):
-    index = scrapy.Field()
+    mid = scrapy.Field()
     text = scrapy.Field()
     user = scrapy.Field()
     time = scrapy.Field()

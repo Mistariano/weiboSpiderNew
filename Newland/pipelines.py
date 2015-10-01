@@ -19,7 +19,7 @@ class WeiboPipeline(object):
 
         self.conn = pymongo.MongoClient()
         self.db = self.conn.weibo
-        self.dbname='test'
+        self.dbname='item5'
 
 
 
@@ -31,10 +31,9 @@ class WeiboPipeline(object):
         id+=1
         t=handle_time(item['time'])
         self.db[self.dbname].save\
-            ({'_id':id,'crawl_id':0,'user':item['user'],'uid':item['uid'],'weibo_id':item['index'],'text':item['text'],'time':t})
-        print id,':'
-        print self.db[self.dbname].find({'_id':id})[0]
-        print'done.'
+            ({'_id':id,'crawl_id':0,'user':item['user'],'uid':item['uid'],'mid':item['mid'],'text':item['text'],'time':t})
+        #print self.db[self.dbname].find({'_id':id})[0]
+        print'done[',id,']'
         return item
 
 def handle_time(t):
@@ -79,8 +78,8 @@ def handle_time(t):
     #
     # #tm_year,tm_mon,tm_mday,tm_hour,tm_min,tm_sec
     #
-    print'handle:>',t,'<'
-    print 'result:>',ttt,'<'
+    # print'handle:>',t,'<'
+    # print 'result:>',ttt,'<'
     return ttt
 
 
