@@ -19,7 +19,7 @@ class WeiboPipeline(object):
 
         self.conn = pymongo.MongoClient()
         self.db = self.conn.weibo
-        self.dbname='item5'
+        self.dbname='bfoitem2'
 
 
 

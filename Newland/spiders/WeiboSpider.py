@@ -11,6 +11,7 @@ import os
 import sys
 import redis
 import cookielib
+#from Newland.schedule import Schedule
 
 '''
     This is a crawler for weibo.cn
@@ -23,17 +24,21 @@ __version__='v1.0.7'
 
 
 class WeiboSpider(scrapy.Spider):
-
+    # f=open('map.log','a')
+    # f.write('thats ok')
+    # f.write('i am fine')
+    #sch=Schedule('list')
     name="weibo"
     #allowed_domains = ["weibo.cn"]
     #check=['start','ok']
-    print 'here>'
-    conn_r=redis.Redis(host='localhost', port=6379, db='4')
-    print'here<'
+    #print 'here>'
+    conn_r=redis.Redis(host='localhost', port=6379, db='1')
+    #print'here<'
     login_cookies={}
     cklist=[]
     def start_requests(self):
         log.msg("start" , level=log.INFO)
+        #print >>self.f, 'start.'
         try:
             try:
                 print 'creating a Fetcher'
@@ -96,8 +101,9 @@ class WeiboSpider(scrapy.Spider):
             log.msg(str(e), level=log.ERROR)
 
     def parse_user(self,response):
-        log.msg("parse_user:"+response.url , level=log.INFO)
-        print "user:"+response.url
+        log.msg("parse_user:"+response.url, level=log.INFO)
+        #print >>self.f, u'user:['+response.meta['nick']+u'],<',response.url,'>'
+        print u'user:['+response.meta['nick']+u'],<',response.url,'>'
         try:
             if self.handle_302(response=response):
                 ck=self.rand_cookie()
@@ -113,20 +119,44 @@ class WeiboSpider(scrapy.Spider):
             uid=url.split('/')[1]
             #print uid
             #os.system("pause")
+            '''
+            #####################################################################################
+            self.sch.pop_all()
+            self.sch.push('http://weibo.cn'+url+'follow')
+            self.sch.push('http://weibo.cn'+url+'fans')
+            next_url=self.sch.request_url()
+            while next_url==-1:
+                print 'no more urls'
+                next_url=self.sch.request_url()
+            ck=self.rand_cookie()
+            print type(next_url)
+            print next_url
+            print'here?'
+            yield Request(url=next_url,cookies=self.login_cookies[ck],callback=self.get_user,meta=
+                {
+                'ck':ck,
+                #'nick':response.meta['nick'],
+                'dont_redirect': True,
+                'handle_httpstatus_list': [302]})
+            ##################################################################################
+            '''
             ck=self.rand_cookie()
             yield Request(url='http://weibo.cn'+url+'follow',dont_filter=True,cookies=self.login_cookies[ck],callback=self.get_user,meta=
                 {
                 'ck':ck,
-                #'nick':response.meta['nick'],
+                'nick':response.meta['nick'],
                 'dont_redirect': True,
                 'handle_httpstatus_list': [302]})
-            ck=self.rand_cookie()
+
             yield Request(url='http://weibo.cn'+url+'fans',dont_filter=True,cookies=self.login_cookies[ck],callback=self.get_user,meta=
                 {
                 'ck':ck,
-                #'nick':response.meta['nick'],
+                'nick':response.meta['nick'],
                 'dont_redirect': True,
                 'handle_httpstatus_list': [302]})
+
+
+
             mids=sel.xpath('//div[@class="c"]/@id').re('M_(.*)')
             for i in mids:
                 #print i
@@ -141,6 +171,8 @@ class WeiboSpider(scrapy.Spider):
                             'uid':uid,
                             'dont_redirect': True,
                             'handle_httpstatus_list': [302]})
+
+
             # url=sel.xpath('//div[@class="tip2"]').re('<a href="(.*?)follow">.*?</a>')[0]
             # #print urls
             # #os.system("pause")
@@ -157,8 +189,9 @@ class WeiboSpider(scrapy.Spider):
             log.msg(str(e), level=log.ERROR)
 
     def parse_comnt(self,response):
-        log.msg("parse_comnt:"+response.url , level=log.INFO)
-        print "comnt:"+response.url
+        log.msg("parse_comnt:"+response.url, level=log.INFO)
+        #print >>self.f, u'single from:['+response.meta['nick']+u'],<', response.url, '>'
+        print u'single from:['+response.meta['nick']+u'],<', response.url, '>'
         try:
 
             if self.handle_302(response=response):
@@ -167,8 +200,8 @@ class WeiboSpider(scrapy.Spider):
                 {
                 'ck':ck,
                 'nick':response.meta['nick'],
-                'mid':i,
-                'uid':uid,
+                'mid':response.meta['mid'],
+                'uid':response.meta['uid'],
                 'dont_redirect': True,
                 'handle_httpstatus_list': [302]})
                 return
@@ -183,14 +216,16 @@ class WeiboSpider(scrapy.Spider):
             log.msg(str(e), level=log.ERROR)
 
     def get_user(self,response):
-        log.msg("get_user:"+response.url , level=log.INFO)
-        print "get_user:"+response.url
+        log.msg("get_user:"+response.url, level=log.INFO)
+        #print >>self.f, u'get user from:['+response.meta['nick']+u'],<',response.url,'>'
+        print u'get user from:['+response.meta['nick']+u'],<',response.url,'>'
         try:
-
+            #print'get user:'
             if self.handle_302(response=response):
                 ck=self.rand_cookie()
-                yield Request(url=response.url,cookies=self.login_cookies[ck],dont_filter=True,callback=self.parse_user,meta=
+                yield Request(url=response.url,cookies=self.login_cookies[ck],dont_filter=True,callback=self.get_user,meta=
                 {
+                'nick':response.meta['nick'],
                 'ck':ck,
                 'dont_redirect': True,
                 'handle_httpstatus_list': [302]})
@@ -208,11 +243,15 @@ class WeiboSpider(scrapy.Spider):
 
                 #print 'here?'
                 if(self.handle_url(url)):
+                    #print nick
+                    #log.msg("get:"+nick , level=log.DEBUG)
+                    #print >>self.f, u'get:['+nick+u']from<'+response.meta['nick']+u'>.'
                     ck=self.rand_cookie()
                     yield Request(url=url,cookies=self.login_cookies[ck],callback=self.parse_user,dont_filter=True,meta=
                     {
                         'ck':ck,
-                        'nick':nick,'dont_redirect': True,
+                        'nick':nick,
+                        'dont_redirect': True,
                         'handle_httpstatus_list': [302]})
                 #print 'here ok'
                 #print url,nick
@@ -239,9 +278,9 @@ class WeiboSpider(scrapy.Spider):
         return 1
 
     def rand_cookie(self):
-        print'rand_cookie...'
+        #print'rand_cookie...'
         r=random.choice(self.cklist)
-        print r
+        #print r
         # os.system("pause")
         return r
 
@@ -284,6 +323,7 @@ class WeiboSpider(scrapy.Spider):
     #     html = html.replace('\\n', '')
     #     html = html.replace('\\', '')
     #     return html
+
 
 
 
