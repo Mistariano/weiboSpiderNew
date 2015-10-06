@@ -54,10 +54,10 @@ class WeiboSpider(scrapy.Spider):
                 print 'oh'
             #self.login_cookie={'gsid_CTandWM':'4uDJf0c41dlVGwYhbnfeHnNJZf1'}
             ck=self.rand_cookie()
-            yield Request(url='http://weibo.cn/tfyiyangqianxi',cookies=self.login_cookies[ck],dont_filter=True,callback=self.parse_user,meta=
+            yield Request(url='http://weibo.cn/tfyiyangqianxi',cookies=self.login_cookies[ck],dont_filter=True,callback=self.parse_user_new,meta=
                 {
                 'ck':ck,
-                'nick':'test',
+                'nick':u'TFBOYS-易烊千玺',
                 'dont_redirect': True,
                 'handle_httpstatus_list': [302]})
             #yield Request(url='http://weibo.cn/pub/topmblog?page=2',callback=self.parse_hot,cookies=self.login_cookie)
@@ -247,7 +247,7 @@ class WeiboSpider(scrapy.Spider):
                     #log.msg("get:"+nick , level=log.DEBUG)
                     #print >>self.f, u'get:['+nick+u']from<'+response.meta['nick']+u'>.'
                     ck=self.rand_cookie()
-                    yield Request(url=url,cookies=self.login_cookies[ck],callback=self.parse_user,dont_filter=True,meta=
+                    yield Request(url=url,cookies=self.login_cookies[ck],callback=self.parse_user_new,dont_filter=True,meta=
                     {
                         'ck':ck,
                         'nick':nick,
@@ -258,6 +258,57 @@ class WeiboSpider(scrapy.Spider):
         except Exception, e:
             log.msg("Fail to get_user" , level=log.ERROR)
             log.msg(str(e), level=log.ERROR)
+    def parse_user_new(self,response):
+        log.msg("parse_user_new:"+response.url, level=log.INFO)
+        print u'user:['+response.meta['nick']+u'],<',response.url,'>'
+        try:
+            if self.handle_302(response=response):
+                ck=self.rand_cookie()
+                yield Request(url=response.url,cookies=self.login_cookies[ck],dont_filter=True,callback=self.parse_user_new,meta=
+                {
+                'ck':ck,
+                'nick':response.meta['nick'],
+                'dont_redirect': True,
+                'handle_httpstatus_list': [302]})
+                return
+            sel=Selector(text=response.body)
+            url=sel.xpath('//div[@class="tip2"]').re('<a href="(.*?)follow">.*?</a>')[0]
+            uid=url.split('/')[1]
+            singles=sel.xpath('//div[@class="c"][position()<last()-1]').extract()
+            for i in singles:
+                sel=Selector(text=i)
+                try:
+                    mid=sel.xpath('//@id').re('M_(.*)')[0]
+                    text=''.join(sel.xpath('//span[@class="ctt"]/text()').extract())
+                    #print text.encode('gbk','ignore')
+                    #os.system("pause")
+                    time=sel.xpath('//span[@class="ct"]/text()').extract()[0]
+                    item=WeiboItem(mid=mid, text=text, time=time, user=response.meta['nick'], uid=uid)
+                    yield item
+                except:
+                    print 'error:'
+                    print i.encode('gbk','ignore')
+            ck=self.rand_cookie()
+            yield Request(url='http://weibo.cn'+url+'follow',dont_filter=True,cookies=self.login_cookies[ck],callback=self.get_user,meta=
+                {
+                'ck':ck,
+                'nick':response.meta['nick'],
+                'dont_redirect': True,
+                'handle_httpstatus_list': [302]})
+
+            yield Request(url='http://weibo.cn'+url+'fans',dont_filter=True,cookies=self.login_cookies[ck],callback=self.get_user,meta=
+                {
+                'ck':ck,
+                'nick':response.meta['nick'],
+                'dont_redirect': True,
+                'handle_httpstatus_list': [302]})
+        except Exception, e:
+            log.msg("Fail to parse_user_new" , level=log.ERROR)
+            log.msg(str(e), level=log.ERROR)
+
+
+
+
 
     def handle_url(self,url):
         # if url in self.check:

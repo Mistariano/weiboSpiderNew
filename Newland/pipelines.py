@@ -5,8 +5,8 @@ import pymongo
 import datetime
 import string
 import random
-reload(sys)
-sys.setdefaultencoding( "utf-8" )
+# reload(sys)
+# sys.setdefaultencoding( "utf-8" )
 #monthName={1:'Jan',2:'Feb',3:'Mar',4:'Apr',5:'May',6:'Jun',7:'Jul',8:'Aug',9:'Sep',10:'Oct',11:'Eve',12:'Dec'}
 
 class WeiboPipeline(object):
@@ -19,7 +19,7 @@ class WeiboPipeline(object):
 
         self.conn = pymongo.MongoClient()
         self.db = self.conn.weibo
-        self.dbname='bfoitem2'
+        self.dbname='new_user_test2'
 
 
 
@@ -30,6 +30,8 @@ class WeiboPipeline(object):
         id=self.db[self.dbname].count()
         id+=1
         t=handle_time(item['time'])
+        # print t
+        # os.system("pause")
         self.db[self.dbname].save\
             ({'_id':id,'crawl_id':0,'user':item['user'],'uid':item['uid'],'mid':item['mid'],'text':item['text'],'time':t})
         #print self.db[self.dbname].find({'_id':id})[0]
