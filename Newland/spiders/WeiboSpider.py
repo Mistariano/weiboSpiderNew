@@ -19,22 +19,65 @@ import cookielib
 '''
 __version__='v1.0.7'
 
+class WeiboSpiderBasic(scrapy.Spider):
+    conn_r=redis.Redis(host='localhost', port=6379, db='1')
+    login_cookies={}
+    cklist=[]
+    print 'creating a Fetcher'
+    fetcher=Fetcher()
+    cookiefiles=fetcher.login()
+    for filename in cookiefiles:
+        ck=self.read_cookie(filename=filename)
+        login_cookies[filename]=ck
+        cklist.append(filename)
+    print 'len:',len(login_cookies)
 
+    def rand_cookie(self):
+        r=random.choice(self.cklist)
+        return r
 
+    def handle_302(self,response):
+        if response.status == 302:
+            print '<302>Redirect to:'
+            if 'Location' in response.headers:
+                print'<',response.headers['Location'],'>'
+            print response.meta['ck']
+            try:
+                del self.login_cookies[response.meta['ck']]
+                self.cklist.remove(response.meta['ck'])
+            except:
+                pass
+            if len(self.cklist)==0:
+                print 'you have no cookies'
+                os.system('pause')
+            print 'len:',len(self.login_cookies)
+            return 1
+        return 0
 
+    def read_cookie(self,filename):
+        log.msg("reading cookie... " , level=log.INFO)
+        print 'cookie in >',filename,'<:'
+        cookie_jar = cookielib.LWPCookieJar(filename)
+        cookie_jar.load(ignore_discard=True, ignore_expires=True)
+        cookie = dict()
+        for ck in cookie_jar:
+            cookie[ck.name] = ck.value
+        print cookie
+        log.msg("done " , level=log.INFO)
+        return cookie
 
 class WeiboSpider(scrapy.Spider):
     # f=open('map.log','a')
     # f.write('thats ok')
     # f.write('i am fine')
-    #sch=Schedule('list')
+    # sch=Schedule('list')
     name="weibo"
     #allowed_domains = ["weibo.cn"]
     #check=['start','ok']
     #print 'here>'
-    conn_r=redis.Redis(host='localhost', port=6379, db='1')
+    conn_r = redis.Redis(host='localhost', port=6379, db='1')
     #print'here<'
-    login_cookies={}
+    login_cookies = {}
     cklist=[]
     def start_requests(self):
         log.msg("start" , level=log.INFO)
@@ -52,7 +95,6 @@ class WeiboSpider(scrapy.Spider):
                 print 'len:',len(self.login_cookies)
             except:
                 print 'oh'
-            #self.login_cookie={'gsid_CTandWM':'4uDJf0c41dlVGwYhbnfeHnNJZf1'}
             ck=self.rand_cookie()
             yield Request(url='http://weibo.cn/tfyiyangqianxi',cookies=self.login_cookies[ck],dont_filter=True,callback=self.parse_user_new,meta=
                 {
@@ -375,6 +417,7 @@ class WeiboSpider(scrapy.Spider):
     #     html = html.replace('\\', '')
     #     return html
 
+w = WeiboSpiderBasic()
 
 
 
